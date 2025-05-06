@@ -11,7 +11,7 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f4f4f4;
+            background-color: white;
         }
         h1 {
             text-align: center;
@@ -36,7 +36,7 @@
             border-radius: 4px;
         }
         button {
-            background-color: #27ae60;
+            background-color: blue;
             color: white;
             padding: 10px 20px;
             border: none;
@@ -45,7 +45,7 @@
             margin-top: 10px;
         }
         button:hover {
-            background-color: #219653;
+            background-color: black;
         }
         #result {
             margin-top: 20px;
@@ -209,42 +209,32 @@
         }
 
         // Function to randomly select tips
-        function getRandomTips(category, fuel) {
-            const transportTips = [
-                'Try carpooling or ridesharing to reduce driving emissions.',
-                'Use public transportation like buses or trains for your commute.',
-                'Consider biking or walking for short trips to cut emissions.',
-                'Plan your routes to minimize driving distance and fuel use.',
-                fuel !== 'electric' ? 'Switch to an electric or hybrid vehicle for lower emissions.' : 'Maintain your electric vehicle’s battery for optimal efficiency.'
-            ].filter(Boolean);
+        function getRandomTips() {
+    const allTips = [
+        "Use public transportation to reduce emissions.",
+        "Unplug electronics when not in use.",
+        "Try a plant-based meal once a week.",
+        "Carpool or bike instead of driving alone.",
+        "Switch to LED light bulbs.",
+        "Reduce food waste by planning meals.",
+        "Lower your thermostat by 1–2 degrees.",
+        "Support local and sustainable products."
+    ];
 
-            const energyTips = [
-                'Switch to LED bulbs to reduce electricity consumption.',
-                'Use energy-efficient appliances to lower your energy footprint.',
-                'Unplug devices when not in use to avoid phantom power draw.',
-                'Explore renewable energy options like solar panels for your home.',
-                'Set your thermostat to save energy during off-hours.'
-            ];
+    // Shuffle the tips using Fisher-Yates
+    for (let i = allTips.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allTips[i], allTips[j]] = [allTips[j], allTips[i]];
+    }
 
-            const dietTips = [
-                'Try Meatless Mondays to reduce your diet’s carbon impact.',
-                'Incorporate more plant-based meals into your weekly diet.',
-                'Buy local and seasonal produce to lower food transport emissions.',
-                'Reduce food waste by planning meals and storing leftovers.',
-                'Choose sustainably sourced seafood or plant-based proteins.'
-            ];
+    // Randomly pick 1 or 2 tips
+    const count = Math.floor(Math.random() * 2) + 1;
+    const selectedTips = allTips.slice(0, count);
 
-            let tipPool;
-            if (category === 'transport') tipPool = transportTips;
-            else if (category === 'energy') tipPool = energyTips;
-            else tipPool = dietTips;
+    return selectedTips.join(' ');
+}        
 
-            const shuffled = tipPool.sort(() => 0.5 - Math.random());
-            const selectedTips = shuffled.slice(0, Math.floor(Math.random() * 2) + 1);
-            return selectedTips.join(' ');
-        }
-
-        // Calculate footprint for a week's data
+       // Calculate footprint for a week's data
         function calculateFootprint(weekData) {
             const { transport = 0, fuel = 'gasoline', energy = 0, diet = 'moderate' } = weekData;
 
