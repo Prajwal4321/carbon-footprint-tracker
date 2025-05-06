@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2.AI-Powered Carbon Footprint Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #27ae60;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #219653;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .tips {
+            margin-top: 10px;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+        #chartContainer, #trendContainer {
+            margin-top: 20px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .ai-note {
+            font-size: 0.9em;
+            color: #2980b9;
+            margin-top: 10px;
+        }
+        .comparison, .aggregate {
+            margin-top: 10px;
+            color: #34495e;
+        }
+        .nav-button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .nav-button:hover {
+            background-color: #2980b9;
+        }
+        #input-page, #results-page, #visualization-page {
+            display: block;
+        }
+        #results-page, #visualization-page {
+            display: none;
+        }
+        #history {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #history ul {
+            list-style: none;
+            padding: 0;
+        }
+        #history li {
+            margin: 5px 0;
+        }
+        #weekSelector {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="input-page">
+        <h1>AI-Powered Carbon Footprint Tracker</h1>
+        <div class="container">
+            <label for="week">Week Number:</label>
+            <input type="number" id="week" placeholder="e.g., 1" min="1" required>
+
+            <label for="transport">Weekly Transportation (miles driven):</label>
+            <input type="number" id="transport" placeholder="e.g., 100" min="0">
+
+            <label for="fuel">Vehicle Fuel Type:</label>
+            <select id="fuel">
+                <option value="gasoline">Gasoline</option>
+                <option value="diesel">Diesel</option>
+                <option value="electric">Electric</option>
+            </select>
+
+            <label for="energy">Monthly Electricity Usage (kWh):</label>
+            <input type="number" id="energy" placeholder="e.g., 500" min="0">
+
+            <label for="diet">Diet Type:</label>
+            <select id="diet">
+                <option value="meat-heavy">Meat-Heavy</option>
+                <option value="moderate">Moderate</option>
+                <option value="vegetarian">Vegetarian</option>
+                <option value="vegan">Vegan</option>
+            </select>
+
+            <button onclick="calculateAndGo()">Calculate Footprint</button>
+            <p class="ai-note">* Transportation emissions are predicted using an AI model simulating real-world driving patterns.</p>
+
+            <div id="history">
+                <h3>Previous Weeks</h3>
+                <ul id="historyList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-page">
+        <h1>Your Estimated Carbon Footprint</h1>
+        <div class="container">
+            <div id="weekSelector">
+                <label for="weekSelect">Select Week: </label>
+                <select id="weekSelect" onchange="displayResults()">
+                    <option value="">Select a week</option>
+                </select>
+            </div>
+            <div id="result">
+                <p id="footprint"></p>
+                <p id="breakdown"></p>
+                <p id="aggregate" class="aggregate"></p>
+                <p id="comparison" class="comparison"></p>
+                <p class="tips" id="tips"></p>
+            </div>
+            <button class="nav-button" onclick="showVisualization()">View Visualization</button>
+            <button class="nav-button" onclick="showInput()">Go Back to Input</button>
+        </div>
+    </div>
+
+    <div id="visualization-page">
+        <h1>Carbon Footprint Visualization</h1>
+        <div class="container">
+            <div id="weekSelector">
+                <label for="vizWeekSelect">Select Week: </label>
+                <select id="vizWeekSelect" onchange="renderCharts()">
+                    <option value="">Select a week</option>
+                </select>
+            </div>
+            <div id="chartContainer">
+                <canvas id="footprintChart"></canvas>
+            </div>
+            <div id="trendContainer">
+                <canvas id="trendChart"></canvas>
+            </div>
+            <button class="nav-button" onclick="showResults()">Go Back to Results</button>
+            <button class="nav-button" onclick="showInput()">New Calculation</button>
+        </div>
+    </div>
+
+    <script>
+        let chartInstance = null;
+        let trendChartInstance = null;
+
+        // Simulated AI model (decision tree) for transport emission factor
+        function predictTransportEmissionFactor(fuel, miles) {
+            const baseFactors = {
+                'gasoline': 0.4,
+                'diesel': 0.45,
+                'electric': 0.15
+            };
+            let adjustment = 1;
+            if (miles > 500) {
+                adjustment = fuel === 'electric' ? 1.1 : 1.05;
+            } else if (miles < 50) {
+                adjustment = fuel === 'electric' ? 0.9 : 0.95;
+            }
+            return baseFactors[fuel] * adjustment;
+        }
+
+        // Function to randomly select tips
+        function getRandomTips(category, fuel) {
+            const transportTips = [
+                'Try carpooling or ridesharing to reduce driving emissions.',
+                'Use public transportation like buses or trains for your commute.',
+                'Consider biking or walking for short trips to cut emissions.',
+                'Plan your routes to minimize driving distance and fuel use.',
+                fuel !== 'electric' ? 'Switch to an electric or hybrid vehicle for lower emissions.' : 'Maintain your electric vehicle’s battery for optimal efficiency.'
+            ].filter(Boolean);
+
+            const energyTips = [
+                'Switch to LED bulbs to reduce electricity consumption.',
+                'Use energy-efficient appliances to lower your energy footprint.',
+                'Unplug devices when not in use to avoid phantom power draw.',
+                'Explore renewable energy options like solar panels for your home.',
+                'Set your thermostat to save energy during off-hours.'
+            ];
+
+            const dietTips = [
+                'Try Meatless Mondays to reduce your diet’s carbon impact.',
+                'Incorporate more plant-based meals into your weekly diet.',
+                'Buy local and seasonal produce to lower food transport emissions.',
+                'Reduce food waste by planning meals and storing leftovers.',
+                'Choose sustainably sourced seafood or plant-based proteins.'
+            ];
+
+            let tipPool;
+            if (category === 'transport') tipPool = transportTips;
+            else if (category === 'energy') tipPool = energyTips;
+            else tipPool = dietTips;
+
+            const shuffled = tipPool.sort(() => 0.5 - Math.random());
+            const selectedTips = shuffled.slice(0, Math.floor(Math.random() * 2) + 1);
+            return selectedTips.join(' ');
+        }
+
+        // Calculate footprint for a week's data
+        function calculateFootprint(weekData) {
+            const { transport = 0, fuel = 'gasoline', energy = 0, diet = 'moderate' } = weekData;
+
+            const transportFactor = predictTransportEmissionFactor(fuel, transport);
+            const energyFactor = 0.5;
+            const dietFactors = {
+                'meat-heavy': 2500,
+                'moderate': 1800,
+                'vegetarian': 1200,
+                'vegan': 800
+            };
+
+            const transportEmissions = transport * transportFactor * 52;
+            const energyEmissions = energy * energyFactor * 12;
+            const dietEmissions = dietFactors[diet];
+            const totalEmissions = transportEmissions + energyEmissions + dietEmissions;
+
+            const totalTons = (totalEmissions / 1000).toFixed(2);
+
+            const emissions = [
+                { name: 'transport', value: transportEmissions },
+                { name: 'energy', value: energyEmissions },
+                { name: 'diet', value: dietEmissions }
+            ];
+            const maxEmission = emissions.reduce((max, curr) => curr.value > max.value ? curr : max, emissions[0]);
+            const tips = 'Tips to reduce your footprint: ' + getRandomTips(maxEmission.name, fuel);
+
+            return {
+                totalTons,
+                transportEmissions: (transportEmissions / 1000).toFixed(2),
+                energyEmissions: (energyEmissions / 1000).toFixed(2),
+                dietEmissions: (dietEmissions / 1000).toFixed(2),
+                comparisonText: calculateComparison(totalTons),
+                tips
+            };
+        }
+
+        // Calculate comparison with averages
+        function calculateComparison(totalTons) {
+            const usAverage = 16;
+            const globalAverage = 4.5;
+            let comparisonText = `Your footprint of ${totalTons} tons is `;
+            const usPercent = ((totalTons / usAverage) * 100).toFixed(0);
+            const globalPercent = ((totalTons / globalAverage) * 100).toFixed(0);
+            comparisonText += `${usPercent}% of the U.S. average (16 tons) and ${globalPercent}% of the global average (4.5 tons).`;
+            return comparisonText;
+        }
+
+        // Save inputs and calculate
+        function calculateAndGo() {
+            const week = parseInt(document.getElementById('week').value);
+            const transport = parseFloat(document.getElementById('transport').value) || 0;
+            const fuel = document.getElementById('fuel').value;
+            const energy = parseFloat(document.getElementById('energy').value) || 0;
+            const diet = document.getElementById('diet').value;
+
+            // Validate inputs
+            if (!week || week < 1) {
+                alert('Please enter a valid week number.');
+                return;
+            }
+            if (transport < 0 || energy < 0) {
+                alert('Miles and electricity usage cannot be negative.');
+                return;
+            }
+
+            // Retrieve or initialize weeks 
+            let weeks = JSON.parse(localStorage.getItem('carbonWeeks') || '[]');
+            weeks = weeks.filter(w => w.week !== week); // Remove existing week if updating
+            weeks.push({ week, transport, fuel, energy, diet });
+
+            // Store data
+            localStorage.setItem('carbonWeeks', JSON.stringify(weeks));
+            localStorage.setItem('currentWeek', week);
+
+            // Update history and show results
+            displayHistory();
+            showResults();
+        }
+
+        // Display history of submitted weeks
+        function displayHistory() {
+            const weeks = JSON.parse(localStorage.getItem('carbonWeeks') || '[]');
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = weeks.length === 0 ? '<li>No weeks submitted yet.</li>' : '';
+            weeks.sort((a, b) => a.week - b.week).forEach(week => {
+                const li = document.createElement('li');
+                li.textContent = `Week ${week.week}: ${week.transport} miles (${week.fuel}), ${week.energy} kWh, ${week.diet} diet`;
+                historyList.appendChild(li);
+            });
+        }
+
+        // Populate week selector for results and visualization
+        function populateWeekSelector() {
+            const weeks = JSON.parse(localStorage.getItem('carbonWeeks') || '[]');
+            const weekSelect = document.getElementById('weekSelect');
+            const vizWeekSelect = document.getElementById('vizWeekSelect');
+            [weekSelect, vizWeekSelect].forEach(select => {
+                select.innerHTML = '<option value="">Select a week</option>';
+                weeks.sort((a, b) => a.week - b.week).forEach(week => {
+                    const option = document.createElement('option');
+                    option.value = week.week;
+                    option.textContent = `Week ${week.week}`;
+                    select.appendChild(option);
+                });
+            });
+
+            const currentWeek = localStorage.getItem('currentWeek');
+            if (currentWeek && weeks.find(w => w.week === parseInt(currentWeek))) {
+                weekSelect.value = currentWeek;
+                vizWeekSelect.value = currentWeek;
+            }
+        }
+
+        // Navigation functions
+        function showInput() {
+            document.getElementById('input-page').style.display = 'block';
+            document.getElementById('results-page').style.display = 'none';
+            document.getElementById('visualization-page').style.display = 'none';
+            displayHistory();
+            populateWeekSelector();
+        }
+
+        function showResults() {
+            document.getElementById('input-page').style.display = 'none';
+            document.getElementById('results-page').style.display = 'block';
+            document.getElementById('visualization-page').style.display = 'none';
+            populateWeekSelector();
+            displayResults();
+        }
+
+        function showVisualization() {
+            document.getElementById('input-page').style.display = 'none';
+            document.getElementById('results-page').style.display = 'none';
+            document.getElementById('visualization-page').style.display = 'block';
+            populateWeekSelector();
+            renderCharts();
+        }
+
+        // Display results for selected week
+        function displayResults() {
+            const weekSelect = document.getElementById('weekSelect');
+            const selectedWeek = parseInt(weekSelect.value);
+            const weeks = JSON.parse(localStorage.getItem('carbonWeeks') || '[]');
+
+            if (!selectedWeek || !weeks.length) {
+                document.getElementById('result').style.display = 'none';
+                return;
+            }
+
+            localStorage.setItem('currentWeek', selectedWeek);
+            document.getElementById('vizWeekSelect').value = selectedWeek;
+
+            const weekData = weeks.find(w => w.week === selectedWeek) || {};
+            const results = calculateFootprint(weekData);
+
+            const totalFootprints = weeks.map(w => Number(calculateFootprint(w).totalTons));
+            const avgFootprint = totalFootprints.length ? (totalFootprints.reduce((sum, val) => sum + val, 0) / totalFootprints.length).toFixed(2) : 0;
+            const aggregateText = `Average footprint across ${weeks.length} weeks: ${avgFootprint} tons`;
+
+            document.getElementById('footprint').textContent = `${results.totalTons} metric tons of CO2 per year`;
+            document.getElementById('breakdown').innerHTML = `
+                Breakdown:<br>
+                - Transport: ${results.transportEmissions} tons<br>
+                - Energy: ${results.energyEmissions} tons<br>
+                - Diet: ${results.dietEmissions} tons
+            `;
+            document.getElementById('aggregate').textContent = aggregateText;
+            document.getElementById('comparison').textContent = results.comparisonText;
+            document.getElementById('tips').textContent = results.tips;
+            document.getElementById('result').style.display = 'block';
+        }
+
+        // Render pie and trend charts
+        function renderCharts() {
+            const weekSelect = document.getElementById('vizWeekSelect');
+            const selectedWeek = parseInt(weekSelect.value);
+            const weeks = JSON.parse(localStorage.getItem('carbonWeeks') || '[]');
+
+            if (!selectedWeek || !weeks.length) {
+                document.getElementById('chartContainer').style.display = 'none';
+                return;
+            }
+
+            localStorage.setItem('currentWeek', selectedWeek);
+            document.getElementById('weekSelect').value = selectedWeek;
+
+            const weekData = weeks.find(w => w.week === selectedWeek) || {};
+            const results = calculateFootprint(weekData);
+
+            // Pie chart
+            const ctx = document.getElementById('footprintChart').getContext('2d');
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            chartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Transport', 'Energy', 'Diet'],
+                    datasets: [{
+                        data: [
+                            results.transportEmissions,
+                            results.energyEmissions,
+                            results.dietEmissions
+                        ],
+                        backgroundColor: ['#3498db', '#e74c3c', '#2ecc71'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: `Carbon Footprint Breakdown (tons CO2) - Week ${selectedWeek}`
+                        }
+                    }
+                }
+            });
+            document.getElementById('chartContainer').style.display = 'block';
+
+            // Trend chart
+            const sortedWeeks = weeks.sort((a, b) => a.week - b.week);
+            const labels = sortedWeeks.map(w => `Week ${w.week}`);
+            const data = sortedWeeks.map(w => calculateFootprint(w).totalTons);
+
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            if (trendChartInstance) {
+                trendChartInstance.destroy();
+            }
+            trendChartInstance = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Footprint (tons CO2)',
+                        data: data,
+                        borderColor: '#27ae60',
+                        backgroundColor: 'rgba(39, 174, 96, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Carbon Footprint Trend Over Weeks'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Tons CO2'
+                            }
+                        }
+                    }
+                }
+            });
+            document.getElementById('trendContainer').style.display = weeks.length > 0 ? 'block' : 'none';
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+                    // Clear the 'carbonWeeks' from localStorage on page load
+        localStorage.removeItem('carbonWeeks');
+            displayHistory();
+            populateWeekSelector();
+            showInput();
+        }; 
+    </script>
+</body>
+</html>
